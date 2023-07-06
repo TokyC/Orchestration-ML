@@ -1,5 +1,9 @@
 import numpy as np
 import pandas as pd
+import mlflow
+import mlflow.sklearn
+import os
+
 
 from lightgbm.sklearn import LGBMClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -175,8 +179,23 @@ def auto_ml(
                 "score": f1_score(y_test, model.predict(X_test), average="weighted"),
             }
         )
-        break
+
 
     # In case we have multiple models
     best_model = max(opt_models, key=lambda x: x["score"])
     return dict(model=best_model)
+
+def run_mlflow(
+        best_model: dict):
+    # Identification de l'interface MLflow
+    mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI"))
+
+    mlflow.set_experiment("football-winner-prediction")
+
+    with mlflow.start_run() as run:
+        mlflow.log_params(best_model["params"])
+        mlflow.log_metric("f1", best_model["score"])
+
+        print(mlflow.get_artifact_uri())
+        mlflow.sklearn.log_model(best_model["model"], "model")
+    return "SUCCESS"
