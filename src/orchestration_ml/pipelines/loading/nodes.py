@@ -15,7 +15,7 @@ def load_csv_from_bucket(project: str, bucket_path: str) -> pd.DataFrame:
     """
     storage_client = storage.Client()
     bucket_name = bucket_path.split("/")[0]
-    folder = "/".join(bucket_path.split("/")[1:]) + "/part-"
+    folder = "/".join(bucket_path.split("/")[1:])
 
     for blob in storage_client.list_blobs(bucket_name, prefix=folder):
         filename = blob.name.split("/")[-1]
@@ -25,9 +25,13 @@ def load_csv_from_bucket(project: str, bucket_path: str) -> pd.DataFrame:
     all_files = glob.glob("/tmp/*.csv")
     li = []
 
+
     for filename in all_files:
         df = pd.read_csv(filename, index_col=None, sep=",")
         li.append(df)
 
-    df = pd.concat(li, axis=0, ignore_index=True)
-    return df
+    if len(all_files) > 1:
+        df = pd.concat(li, axis=0, ignore_index=True)
+        return df
+    else:
+        return li[0]
