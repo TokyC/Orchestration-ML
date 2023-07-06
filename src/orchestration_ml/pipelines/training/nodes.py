@@ -175,6 +175,7 @@ def auto_ml(
                 "score": f1_score(y_test, model.predict(X_test), average="weighted"),
             }
         )
+        break
 
     # In case we have multiple models
     best_model = max(opt_models, key=lambda x: x["score"])
