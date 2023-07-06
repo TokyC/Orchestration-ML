@@ -1,0 +1,20 @@
+# Liste des Cloud Builders : https://console.cloud.google.com/gcr/images/cloud-builders/GLOBAL
+steps:
+- name: "docker.io/library/python:3.9"
+  id: CI
+  entrypoint: /bin/sh
+  args:
+  - -c
+  - 'chmod a+x install.sh && ./install.sh && pytest'
+- name: "docker.io/library/python:3.9"
+  id: CD
+  entrypoint: /bin/sh
+  args:
+  - -c
+  - 'chmod a+x install.sh && ./install.sh && kedro run --pipeline global'
+  env:
+  - 'ENV=$BRANCH_NAME'
+  - 'MLFLOW_SERVER=$_MLFLOW_SERVER'
+  options:
+    machineType: 'N1_HIGHCPU_8'
+  timeout: 1200s

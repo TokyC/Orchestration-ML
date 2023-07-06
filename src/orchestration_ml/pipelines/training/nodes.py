@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 
 from lightgbm.sklearn import LGBMClassifier
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.base import BaseEstimator
 from sklearn.metrics import f1_score
 from hyperopt import hp, tpe, fmin
@@ -34,17 +36,56 @@ MODELS = [
         "override_schemas": {
             "num_leaves": int,
             "min_child_samples": int,
-            "max_depth": int,
-            "num_iterations": int,
+            "max_depth": int
+            # "num_iterations": int,
         },
-    }
+    },
+    {
+        "name": "XGBoost",
+        "class": XGBClassifier,
+        "params": {
+            "objective": "multi:softmax",
+            "eval_metric": "mlogloss",
+            "learning_rate": hp.uniform("learning_rate", 0.001, 1),
+            "n_estimators": hp.quniform("n_estimators", 100, 1000, 20),
+            "max_depth": hp.quniform("max_depth", 4, 12, 6),
+            "subsample": hp.uniform("subsample", 0.5, 1),
+            "colsample_bytree": hp.uniform("colsample_bytree", 0.3, 1),
+            "min_child_weight": hp.quniform("min_child_weight", 1, 10, 2),
+            "reg_alpha": hp.choice("reg_alpha", [0, 1e-1, 1, 2, 5, 10]),
+            "reg_lambda": hp.choice("reg_lambda", [0, 1e-1, 1, 2, 5, 10]),
+        },
+        "override_schemas": {
+            "max_depth": int,
+            "n_estimators": int,
+            "min_child_weight": int,
+        }
+    },
+{
+    "name": "RandomForest",
+    "class": RandomForestClassifier,
+    "params": {
+        "n_estimators": hp.quniform("n_estimators", 100, 1000, 20),
+        "max_depth": hp.quniform("max_depth", 4, 12, 6),
+        "min_samples_split": hp.quniform("min_samples_split", 2, 10, 2),
+        "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 10, 2),
+        "max_features": hp.choice("max_features", ["log2", "sqrt"]),
+        "bootstrap": hp.choice("bootstrap", [True, False]),
+    },
+    "override_schemas": {
+        "n_estimators": int,
+        "max_depth": int,
+        "min_samples_split": int,
+        "min_samples_leaf": int,
+    },
+}
 ]
 
 
 def train_model(
-    instance: BaseEstimator,
-    training_set: Tuple[np.ndarray, np.ndarray],
-    params: Dict = {},
+        instance: BaseEstimator,
+        training_set: Tuple[np.ndarray, np.ndarray],
+        params: Dict = {},
 ) -> BaseEstimator:
     """
     Trains a new instance of model with supplied training set and hyper-parameters.
@@ -61,20 +102,16 @@ def train_model(
 
 
 def optimize_hyp(
-    instance: BaseEstimator,
-    # dataset_train: Tuple[np.ndarray, np.ndarray],
-    # dataset_test: Tuple[np.ndarray, np.ndarray],
-    dataset,
-    search_space: Dict,
-    # metric: Callable[[Any, Any], float],
-    max_evals: int = 40,
+        instance: BaseEstimator,
+        dataset,
+        search_space: Dict,
+        # metric: Callable[[Any, Any], float],
+        max_evals: int = 40,
 ) -> BaseEstimator:
     """
     Trains model's instances on hyper-parameters search space and returns most accurate
     hyper-parameters based on eval set.
     """
-    # X_train, y_train = dataset_train
-    # X_test, y_test = dataset_test
     X, y = dataset
 
     def objective(params):
@@ -102,11 +139,11 @@ def optimize_hyp(
 
 
 def auto_ml(
-    X_train: pd.DataFrame,
-    y_train: pd.DataFrame,
-    X_test: pd.DataFrame,
-    y_test: pd.DataFrame,
-    max_evals: int = 40,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        max_evals: int = 40,
 ) -> BaseEstimator:
     """
     Runs training of multiple model instances and select the most accurated based on objective function.
